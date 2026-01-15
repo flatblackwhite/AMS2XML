@@ -1,4 +1,7 @@
 import os
+# CRITICAL: Set CUDA device BEFORE importing torch or any library that imports torch
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+
 import shutil
 import uuid
 import yaml
