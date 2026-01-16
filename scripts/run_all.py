@@ -1,6 +1,7 @@
 import os
 import sys
 import yaml
+import shutil
 import traceback  # 新增：打印详细堆栈
 from pathlib import Path
 from sam3_extractor import main as sam3_main
@@ -38,6 +39,11 @@ def process_single_image(image_path: str):
         print("步骤3：合并XML...")
         merged_xml_path = os.path.join(TEMP_DIR, f"{img_stem}_merged_temp.drawio.xml")
         merge_xml(sam3_xml_path, text_xml_path, image_path, merged_xml_path)
+        
+        # 步骤4：保存最终结果
+        final_output_path = os.path.join(FINAL_DIR, f"{img_stem}.drawio.xml")
+        shutil.copy(merged_xml_path, final_output_path)
+        print(f"✅ 处理完成，结果已保存: {final_output_path}")
 
     except Exception as e:
         # 打印详细堆栈，定位具体错误行

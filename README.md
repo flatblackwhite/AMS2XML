@@ -5,7 +5,11 @@ This project implements a sophisticated pipeline to convert images (like flowcha
 ## Key Features
 
 *   **Advanced Segmentation**: Uses **SAM 3 (Segment Anything Model 3)** for state-of-the-art segmentation of diagram elements (shapes, arrows, icons).
-*   **Intelligent Refinement**: Iterative extraction process guided by **Multimodal LLMs (GPT-4o/Gemini/Claude)** to identify missed elements.
+*   **Fixed 4-Round VLM Scanning**: A structured, iterative extraction process guided by **Multimodal LLMs (Qwen-VL/GPT-4V)** ensuring no element is left behind:
+    1.  **Initial Generic Extraction**: Captures standard shapes and icons.
+    2.  **Single Word Scan**: VLM scans blank areas for single objects.
+    3.  **Two-Word Scan**: Refines extraction for specific attributes.
+    4.  **Phrase Scan**: Captures complex descriptions or grouped objects.
 *   **High-Quality OCR**:
     *   **Azure Document Intelligence** for precise text localization.
     *   **Mistral Vision/MLLM** for correcting text and converting mathematical formulas to **LaTeX** ($\int f(x) dx$).
@@ -13,7 +17,7 @@ This project implements a sophisticated pipeline to convert images (like flowcha
 *   **Smart Background Removal**: Integrated **RMBG-2.0** model to automatically remove backgrounds from icons, pictures, and arrows, ensuring they layer correctly in DrawIO.
 *   **Arrow Handling**: Arrows are extracted as transparent images (rather than complex vector paths) to guarantee visual fidelity, handling dashed lines, curves, and complex routing without error.
 *   **Vector Shape Recovery**: Standard shapes are converted to native DrawIO vector shapes with accurate fill and stroke colors.
-    *   **Supported Shapes**: Rectangle, Rounded Rectangle, Diamond (Decision), Ellipse (Start/End), Cylinder (Database), Cloud, Hexagon, Triangle, Parallelogram, Text Bubble, Section Panel.
+    *   **Supported Shapes**: Rectangle, Rounded Rectangle, Diamond (Decision), Ellipse (Start/End), Cylinder (Database), Cloud, Hexagon, Triangle, Parallelogram, Actor, Title Bar, Text Bubble, Section Panel.
 *   **Multi-User Concurrency**: Built-in support for concurrent user sessions using a **Global Lock** mechanism for thread-safe GPU access and an **LRU Cache** (Least Recently Used) to persist image embeddings across requests, ensuring high performance and stability.
 *   **Web Interface**: A React-based frontend + FastAPI backend for easy uploading and editing.
 

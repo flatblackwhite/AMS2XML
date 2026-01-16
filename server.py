@@ -2,32 +2,39 @@ import os
 import subprocess
 
 def get_freest_gpu():
-    """Run nvidia-smi to find the GPU with the most free memory."""
+    """Run nvidia-smi to find the GPU with low utilization and sufficient memory."""
     try:
-        # Query GPU index and free memory (in MiB)
+        # Query GPU index, utilization.gpu, and memory.free
         result = subprocess.run(
-            ['nvidia-smi', '--query-gpu=index,memory.free', '--format=csv,noheader,nounits'],
+            ['nvidia-smi', '--query-gpu=index,utilization.gpu,memory.free', '--format=csv,noheader,nounits'],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
         )
         if result.returncode != 0:
             print(f"⚠️ Warning: nvidia-smi failed, defaulting to GPU 0.")
             return "0"
 
-        gpu_stats = []
+        gpu_candidates = []
         for line in result.stdout.strip().split('\n'):
             parts = line.split(',')
-            if len(parts) == 2:
+            if len(parts) == 3:
                 index = parts[0].strip()
-                memory_free = int(parts[1].strip())
-                gpu_stats.append((index, memory_free))
+                utilization = int(parts[1].strip())
+                memory_free = int(parts[2].strip())
+                gpu_candidates.append({
+                    "index": index, 
+                    "util": utilization, 
+                    "mem": memory_free
+                })
 
-        if not gpu_stats:
+        if not gpu_candidates:
             return "0"
 
-        # Select GPU with max free memory
-        best_gpu = max(gpu_stats, key=lambda x: x[1])
-        print(f"✅ Auto-selected GPU {best_gpu[0]} with {best_gpu[1]} MiB free memory.")
-        return best_gpu[0]
+        # Sort by utilization (ascending) then memory (descending)
+        # We prefer a GPU with 0% utilization over one with 90%, even if the 90% one has more RAM.
+        best_gpu = sorted(gpu_candidates, key=lambda x: (x["util"], -x["mem"]))[0]
+        
+        print(f"✅ Auto-selected GPU {best_gpu['index']} (Util: {best_gpu['util']}%, Free: {best_gpu['mem']} MiB)")
+        return best_gpu["index"]
 
     except Exception as e:
         print(f"⚠️ GPU auto-selection failed: {e}. Defaulting to GPU 0.")
@@ -169,12 +176,30 @@ def process_image_background(task_id: str, image_path: str, output_dir: str, fil
         
         import concurrent.futures
 
+        def run_sam3_with_global_model(img_path):
+            """Helper to run SAM3 using the shared loaded model protected by a lock."""
+            extractor = get_extractor()
+            # 保护 GPU 推理过程，防止多任务并发导致 OOM
+            with GLOBAL_LOCK:
+                print(f"[{task_id}] Acquired Global SAM3 Lock. Starting inference...")
+                extractor.iterative_extract(img_path)
+                print(f"[{task_id}] Global SAM3 Inference finished. Lock released.")
+            
+            # 构造返回路径 (与 sam3_extractor.py 逻辑保持一致)
+            # 这里的 CONFIG["sam3"] 可能无法直接访问 path，需小心
+            # 我们假设 extractor 内部使用了正确的 CONFIG
+            # 从 scripts.sam3_extractor 导入 output config logic 会更稳健，但这里我们根据已知逻辑构建
+            # sam3_extractor.py 中: temp_dir = os.path.join(OUTPUT_CONFIG["temp_dir"], ...)
+            # 我们可以直接重新计算路径
+            temp_dir = os.path.join(BASE_DIR, "output", "temp", Path(img_path).stem)
+            return os.path.join(temp_dir, "sam3_output.drawio.xml")
+
         # 使用线程池并行运行
         # 注意：如果显存有限，同时运行两个大模型可能会导致 OOM。
         # 如果遇到显存不足，请将 max_workers 改为 1 或回退到串行模式。
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-            # 提交任务
-            future_sam3 = executor.submit(sam3_main, image_path)
+            # 提交任务 - 使用全局模型而不是运行脚本 main (避免重复加载)
+            future_sam3 = executor.submit(run_sam3_with_global_model, image_path)
             future_text = executor.submit(run_text_extraction, image_path)
             
             # 获取结果 (会阻塞直到完成)

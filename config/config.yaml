@@ -22,12 +22,12 @@ sam3:
 
 # 多模态大模型配置（示例为OpenAI GPT-4V，可替换为Qwen-VL/InternVL等）
 multimodal:
-  mode: "local"  # "api" 或 "local"
+  mode: "api"  # "api" 或 "local"
   
   # API 模式配置 (Cloud)
-  api_key: "sk-xxxx" 
+  api_key: "sk-4abaf1bc6a5c4cd7a34a4474645a21de" 
   base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
-  model: "qwen-vl-max"
+  model: "qwen3-vl-plus"
   
   # 本地模式配置 (Ollama)
   # 使用 OpenAI 兼容接口连接本地 Ollama

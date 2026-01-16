@@ -12,7 +12,6 @@ from PIL import Image, ImageColor
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from pathlib import Path
-from sklearn.cluster import KMeans
 from collections import OrderedDict
 import threading
 
@@ -39,6 +38,7 @@ SAM3_CONFIG = CONFIG["sam3"]
 OUTPUT_CONFIG = CONFIG["paths"]
 
 # 取色配置（优先从yaml读取，无则兜底默认值）
+# Note: Legacy configuration, might be unused now but kept for compatibility if needed elsewhere
 try:
     DOMINANT_COLOR_CONFIG = CONFIG["dominant_color"]
 except KeyError:
@@ -234,105 +234,6 @@ def extract_style_colors(image: np.ndarray, bbox: list) -> tuple:
         return "#{:02x}{:02x}{:02x}".format(*rgb)
 
     return rgb2hex(fill_rgb), rgb2hex(stroke_rgb)
-
-def hsv_to_rgb(h, s, v):
-    """将HSV值（0-255）转换为RGB值（0-255）"""
-    h = h / 255.0
-    s = s / 255.0
-    v = v / 255.0
-    if s == 0.0:
-        r = g = b = int(v * 255)
-        return (r, g, b)
-    i = int(h * 6.0)
-    f = (h * 6.0) - i
-    p = v * (1.0 - s)
-    q = v * (1.0 - s * f)
-    t = v * (1.0 - s * (1.0 - f))
-    i = i % 6
-    if i == 0:
-        r, g, b = v, t, p
-    elif i == 1:
-        r, g, b = q, v, p
-    elif i == 2:
-        r, g, b = p, v, t
-    elif i == 3:
-        r, g, b = p, q, v
-    elif i == 4:
-        r, g, b = t, p, v
-    else:
-        r, g, b = v, p, q
-    return (int(r * 255), int(g * 255), int(b * 255))
-
-def generate_stroke_color(fill_rgb: tuple) -> str:
-    """
-    从填充色RGB生成描边色（HSV空间调整亮度，避免深色失真）
-    :param fill_rgb: 填充色RGB元组 (r, g, b)
-    :return: #RRGGBB格式十六进制颜色码
-    """
-    # 1. RGB转HSV（先归一化到0-255）
-    r, g, b = [x for x in fill_rgb]
-    rgb_np = np.array([[[r, g, b]]], dtype=np.uint8)
-    hsv_np = cv2.cvtColor(rgb_np, cv2.COLOR_RGB2HSV)
-    h, s, v = hsv_np[0, 0, :]
-    
-    # 2. 调整亮度（保持色相、饱和度不变，降低亮度比例）
-    new_v = int(v * DOMINANT_COLOR_CONFIG["stroke_brightness_ratio"])
-    # 容错：避免亮度低于0，深色时适当保底
-    new_v = max(DOMINANT_COLOR_CONFIG["brightness_min"], new_v)
-    
-    # 3. HSV转回RGB
-    stroke_r, stroke_g, stroke_b = hsv_to_rgb(h, s, new_v)
-    
-    # 4. 转换为十六进制格式
-    return "#{:02x}{:02x}{:02x}".format(stroke_r, stroke_g, stroke_b)
-
-# -------------------------- 工具函数（核心修复：extract_dominant_color） --------------------------
-def extract_dominant_color(image: np.ndarray, bbox: list, border_width: int = 5) -> str:
-    """
-    修复版：提取元素边界附近的平均颜色（解决维度不匹配报错）
-    :param image: 输入图像（cv2格式，BGR）
-    :param bbox: 元素边界框 [x1, y1, x2, y2]
-    :param border_width: 边界宽度（默认5像素，可调整）
-    :return: #RRGGBB格式十六进制颜色码
-    """
-    x1, y1, x2, y2 = map(int, bbox)
-    # 1. 截取整个元素bbox作为基础ROI
-    roi = image[y1:y2, x1:x2]
-    if roi.size == 0:
-        return "#ffffff"
-    
-    h, w = roi.shape[:2]
-    # 2. 容错处理：如果ROI尺寸小于边界宽度，直接取整个ROI（避免边界区域为空）
-    if h <= 2 * border_width or w <= 2 * border_width:
-        border_roi = roi
-    else:
-        # 3. 提取边界区域（四周边缘，宽度为border_width）
-        top_border = roi[0:border_width, :]  # (border_width, w, 3)
-        bottom_border = roi[h-border_width:h, :]  # (border_width, w, 3)
-        left_border = roi[border_width:h-border_width, 0:border_width]  # (h-2*border_width, border_width, 3)
-        right_border = roi[border_width:h-border_width, w-border_width:w]  # (h-2*border_width, border_width, 3)
-        
-        # 4. 核心修复：将所有边界区域扁平化为 (n, 3) 形状（统一维度，解决拼接报错）
-        # 扁平化规则：将每个边界的所有像素展开，保留3个颜色通道
-        top_flat = top_border.reshape(-1, 3)
-        bottom_flat = bottom_border.reshape(-1, 3)
-        left_flat = left_border.reshape(-1, 3)
-        right_flat = right_border.reshape(-1, 3)
-        
-        # 5. 拼接扁平化后的边界数组（此时所有数组维度1都是3，无匹配问题）
-        border_roi_flat = np.concatenate([top_flat, bottom_flat, left_flat, right_flat], axis=0)
-        
-        # 6. 还原为三维数组（保持和原有逻辑兼容，不影响后续颜色计算）
-        border_roi = border_roi_flat.reshape(-1, 1, 3)
-    
-    # 7. BGR格式转换为RGB格式（保持和原有逻辑一致）
-    border_roi_rgb = cv2.cvtColor(border_roi, cv2.COLOR_BGR2RGB)
-    
-    # 8. 计算边界区域的平均RGB颜色（核心：仅对边界区域求平均）
-    avg_color = np.mean(border_roi_rgb, axis=(0, 1)).astype(int)
-    
-    # 9. 转换为#RRGGBB格式十六进制颜色码
-    return "#{:02x}{:02x}{:02x}".format(*avg_color)
 
 def image_to_base64(image: Image.Image) -> str:
     import io
@@ -644,6 +545,9 @@ class Sam3ElementExtractor:
         self.state_cache = OrderedDict()
         self.max_cache_size = 3  # 最多缓存3张图片的Embedding
         self.cache_lock = threading.Lock() # 保护缓存读写
+        
+        # 记录应当被视为"图片"(保留背景)的prompt集合
+        self.known_picture_prompts = {"picture"}
 
     def _get_image_state(self, image_path: str):
         """获取或创建图像状态 (线程安全 + LRU缓存)"""
@@ -973,58 +877,6 @@ class Sam3ElementExtractor:
         # 兼容性包装，不直接操作 current_image_path
         return self.extract_with_new_prompts(image_path, prompts, existing_result=None)
 
-    def get_unrecognized_crops(self, cv2_image: np.ndarray, elements_data: dict, max_crops: int = 3) -> list:
-        """
-        Smart Cropping: 从不可识别区域中裁剪出最大连通块
-        """
-        h, w = cv2_image.shape[:2]
-        # 1. 创建全黑掩码
-        mask = np.zeros((h, w), dtype=np.uint8)
-        
-        # 2. 绘制所有已识别区域为白色 (255)
-        for items in elements_data.values():
-            for item in items:
-                points = np.array(item["polygon"], dtype=np.int32)
-                cv2.fillPoly(mask, [points], 255)
-        
-        # 3. 反转掩码：未识别区域变白 (255)，已识别变黑 (0)
-        unrecognized_mask = cv2.bitwise_not(mask)
-        
-        # 4. 腐蚀/膨胀操作去除噪点（可选）
-        kernel = np.ones((5,5), np.uint8)
-        unrecognized_mask = cv2.morphologyEx(unrecognized_mask, cv2.MORPH_OPEN, kernel)
-
-        # 5. 查找轮廓
-        contours, _ = cv2.findContours(unrecognized_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        
-        # 6. 按面积排序并筛选
-        contours = sorted(contours, key=cv2.contourArea, reverse=True)
-        
-        crops_info = []
-        for i, cnt in enumerate(contours[:max_crops]):
-            area = cv2.contourArea(cnt)
-            # 最小面积阈值 (例如 64x64)
-            if area < 4096: 
-                continue
-                
-            x, y, cw, ch = cv2.boundingRect(cnt)
-            
-            # 稍微扩大一点 Crop (Padding)
-            pad = 20
-            x_start = max(0, x - pad)
-            y_start = max(0, y - pad)
-            x_end = min(w, x + cw + pad)
-            y_end = min(h, y + ch + pad)
-            
-            crop_img = cv2_image[y_start:y_end, x_start:x_end]
-            crops_info.append({
-                "id": i,
-                "image": crop_img,
-                "bbox": [x_start, y_start, x_end, y_end]
-            })
-            
-        return crops_info
-
     def generate_mask_visualization(self, cv2_image: np.ndarray, elements_data: dict, output_path: str):
         """生成掩码可视化图（用于传给多模态大模型）"""
         image = cv2_image.copy()
@@ -1050,109 +902,85 @@ class Sam3ElementExtractor:
 
     def iterative_extract(self, image_path: str) -> dict:
         """
-        循环迭代提取优化版：
-        使用增量提取模式，避免重复计算Image Embedding和已提取的Mask
+        循环迭代提取优化版 (Fixed 4-Round Strategy):
+        Round 1: Initial generic prompts.
+        Round 2: Single-word specific prompts.
+        Round 3: Two-word specific prompts.
+        Round 4: Short phrases.
         """
         temp_dir = os.path.join(OUTPUT_CONFIG["temp_dir"], Path(image_path).stem)
         os.makedirs(temp_dir, exist_ok=True)
-        self.vis_dir = Path(temp_dir) # Convenient alias for generate_mask_visualization path construction
+        self.vis_dir = Path(temp_dir) 
 
-        current_prompts = list(SAM3_CONFIG.get("initial_prompts", SAM3_CONFIG.get("default_prompts", ["rectangle", "icon", "text_bubble", "arrow"])))
+        # Round 1: Initial Extraction
+        print(f"--- [Round 1] Initial Extraction ---")
+        current_prompts = list(SAM3_CONFIG.get("initial_prompts", ["rectangle", "icon", "text_bubble", "arrow"]))
         known_prompts = set(current_prompts)
         
-        # 第一次全量提取
-        # 注意：这里我们使用 extract_with_new_prompts 来处理（该函数内会负责初始化）
+        # Reset known picture prompts for new image
+        self.known_picture_prompts = {"picture"}
+        
         current_result = self.extract_with_new_prompts(image_path, current_prompts, existing_result=None)
         
-        loop_count = 0
-        max_loops = SAM3_CONFIG.get("max_loops", 3)
-        image_total_area = current_result["canvas_size"][0] * current_result["canvas_size"][1]
+        # Save initial visualization
+        vis_path = str(self.vis_dir / "mask_vis_round_1.jpg")
+        self.generate_mask_visualization(current_result["cv2_image"], current_result["elements"], vis_path)
 
-        # 初始未识别区域计算
-        total_area = current_result["full_metadata"]["total_area"]
-        unrecognized_ratio = 1.0 - (total_area / float(image_total_area)) if image_total_area > 0 else 0
-        unrecognized_ratio = max(0.0, unrecognized_ratio)
-
-        # 保存初始可视化
-        initial_vis_path = str(self.vis_dir / "mask_vis_initial.jpg")
-        self.generate_mask_visualization(current_result["cv2_image"], current_result["elements"], initial_vis_path)
-        print(f"【初始提取】Ratio: {unrecognized_ratio:.2%}, Elements: {current_result['full_metadata']['total_elements']}")
-
-        while loop_count < max_loops:
-            print(f"Loop {loop_count}: Unrecognized Ratio = {unrecognized_ratio:.2%} (Limit: {SAM3_CONFIG.get('unrecognized_threshold', 0.05):.0%})")
-
-            # 2. 终止条件检查
-            if unrecognized_ratio <= SAM3_CONFIG.get("unrecognized_threshold", 0.05):
-                print("未识别区域低于阈值，停止迭代")
-                break
-
-            new_candidates = []
+        # Iteration Rounds 2, 3, 4
+        for round_idx in range(2, 5):
+            print(f"--- [Round {round_idx}] VLM Scanning ---")
             
-            # --- 策略分支：全局Mask 或 局部Crop ---
-            # 如果未识别区域较小(<20%)，尝试Crop模式以看清小物体
-            use_crop_strategy = (unrecognized_ratio < 0.20) and (loop_count > 0)
-            
-            if use_crop_strategy:
-                print(">>> 触发智能裁剪策略 (Smart Cropping)...")
-                # 传入已有元素以构建“反向掩码”
-                crops = self.get_unrecognized_crops(current_result["cv2_image"], current_result["elements"])
-                
-                if not crops:
-                    print("未找到有效裁剪区域，回退到全局Mask模式")
-                    use_crop_strategy = False
-                else:
-                    for crop_item in crops:
-                        crop_path = str(self.vis_dir / f"crop_loop_{loop_count}_{crop_item['id']}.jpg")
-                        cv2.imwrite(crop_path, crop_item["image"])
-                        print(f"分析局部裁剪: {crop_path}")
-                        # 传入 existing_prompts
-                        crop_prompts = get_supplement_prompts(crop_path, existing_prompts=list(known_prompts))
-                        if isinstance(crop_prompts, list):
-                            new_candidates.extend(crop_prompts)
-            
-            if not use_crop_strategy:
-                # 3. 生成Mask可视化图 (用于MLLM推理)
-                vis_path = str(self.vis_dir / f"mask_vis_loop_{loop_count}.jpg")
+            # 1. Update Visualization from previous round
+            vis_path = str(self.vis_dir / f"mask_vis_round_{round_idx-1}.jpg")
+            # Ensure the visualization exists (it should, from end of previous block)
+            if not os.path.exists(vis_path):
                 self.generate_mask_visualization(current_result["cv2_image"], current_result["elements"], vis_path)
-
-                # 4. 调用MLLM获取补充提示词 (Prompt Engineering)
-                # 传入 existing_prompts
-                new_candidates_raw = get_supplement_prompts(vis_path, existing_prompts=list(known_prompts))
-                if isinstance(new_candidates_raw, list):
-                    new_candidates.extend(new_candidates_raw)
             
-            # 去重
-            new_candidates = list(set(new_candidates))
-
-            if not new_candidates:
-                print("MLLM未返回有效提示词，停止迭代")
-                break
-
-            print(f"MLLM Suggested: {new_candidates}")
+            # 2. Call VLM
+            # Note: We pass original image path for VLM comparison
+            vlm_response = get_supplement_prompts(
+                mask_vis_path=vis_path, 
+                existing_prompts=list(known_prompts),
+                round_index=round_idx,
+                original_image_path=image_path
+            )
             
-            # 5. 过滤已存在的 Prompt
+            icon_prompts = vlm_response.get("icon_prompts", [])
+            picture_prompts = vlm_response.get("picture_prompts", [])
+            has_missing = vlm_response.get("has_missing", False)
+            
+            print(f"VLM Response: icons={icon_prompts}, pictures={picture_prompts}, missing={has_missing}")
+            
+            # 3. Update Picture Prompts Registry
+            for p in picture_prompts:
+                self.known_picture_prompts.add(p)
+                
+            # 4. Combine and Filter
+            new_candidates = list(set(icon_prompts + picture_prompts))
             valid_new_prompts = [p for p in new_candidates if p not in known_prompts]
             
             if not valid_new_prompts:
-                print("没有新的有效提示词，停止迭代")
-                break
+                print(f"Round {round_idx}: No new valid prompts found.")
+                if not has_missing:
+                    print("VLM indicates no missing elements. Stopping early.")
+                    break
+                else:
+                    print("VLM thinks elements are missing but provided no new unique prompts. Continue to next round.")
+                    continue
 
-            # 6. 增量提取 (Optimization Key)
-            print(f"Incremental Extracting for: {valid_new_prompts}")
-            # Ensure we pass the clean existing_result (dict)
+            # 5. Incremental Extraction
+            print(f"Extracting new prompts: {valid_new_prompts}")
             current_result = self.extract_with_new_prompts(image_path, valid_new_prompts, existing_result=current_result)
-
-            # 更新已知列表和状态
-            known_prompts.update(valid_new_prompts)
-            total_elements = current_result["full_metadata"]["total_elements"]
-            total_area = current_result["full_metadata"]["total_area"]
-            unrecognized_ratio = 1.0 - (total_area / float(image_total_area)) if image_total_area > 0 else 0
             
-            loop_count += 1
+            known_prompts.update(valid_new_prompts)
+            
+            # Generate visualization for next round
+            next_vis_path = str(self.vis_dir / f"mask_vis_round_{round_idx}.jpg")
+            self.generate_mask_visualization(current_result["cv2_image"], current_result["elements"], next_vis_path)
 
-        print(f"Final Loops: {loop_count}, Total Elements: {current_result['full_metadata']['total_elements']}")
+        print(f"Final Total Elements: {current_result['full_metadata']['total_elements']}")
         
-        # 必须调用 save_temp_files 以保持最后的文件输出行为一致
+        # Save results
         self.save_temp_files(current_result, temp_dir)
         
         return current_result
@@ -1185,7 +1013,7 @@ class Sam3ElementExtractor:
                     # 重新从原始PIL图裁切以获得高质量输入
                     cropped = pil_image.crop((x1, y1, x2, y2))
                     
-                    if elem_type == "picture":
+                    if elem_type in self.known_picture_prompts:
                          # 特殊情况：picture保留背景
                          final_img = cropped
                          save_suffix = ".png"

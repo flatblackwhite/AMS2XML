@@ -7,7 +7,11 @@
 ## 核心功能
 
 *   **先进分割技术 (Advanced Segmentation)**: 采用 **SAM 3 (Segment Anything Model 3)** 模型，对图表元素（基础形状、箭头、图标）进行 SOTA 级别的精准分割。
-*   **智能迭代细化 (Intelligent Refinement)**: 引入 **多模态大模型 (GPT-4o/Gemini/Claude)** 引导的迭代提取机制。系统会自动分析未识别区域，生成补充提示词，确保遗漏的微小元素也能被捕获。
+*   **固定四轮迭代扫描 (Fixed 4-Round VLM Scanning)**: 引入 **多模态大模型 (Qwen-VL/GPT-4V)** 进行四轮结构化扫描，彻底杜绝元素遗漏：
+    1.  **初始全量提取**: 识别基础形状与图标。
+    2.  **单词查漏 (Single Word Round)**: 扫描未识别区域的单一物体。
+    3.  **双词精修 (Two-Word Round)**: 针对特定属性或罕见物体进行提取。
+    4.  **短语补全 (Phrase Round)**: 识别复杂组合或长描述物体。
 *   **高质量 OCR 与公式识别**:
     *   **Azure Document Intelligence**: 提供工业级的精准文本定位（Bounding Box）。
     *   **Mistral Vision/MLLM**: 专门用于校对文本内容，能够将复杂的数学公式精确转换为 **LaTeX** 格式（例如 $\int f(x) dx$），并在 DrawIO 中完美渲染。
@@ -15,7 +19,7 @@
 *   **智能背景移除 (Smart Background Removal)**: 集成 **RMBG-2.0** 模型，自动对图标、图片和箭头进行精细抠图（去背），确保它们在 DrawIO 中可以完美叠加，无白色背景干扰。
 *   **高保真箭头处理**: 摒弃了不稳定的矢量化路径生成，将箭头作为透明图像提取。这种方法能完美保留虚线、曲线、复杂的路由走向和端点样式，实现了视觉上的绝对一致。
 *   **矢量形状恢复**: 标准几何形状会被识别并转换为原生的 DrawIO 矢量对象，并自动提取填充色和描边色。
-    *   **支持形状**: 矩形 (Rectangle)、圆角矩形 (Rounded Rectangle)、菱形/决策 (Diamond)、椭圆 (Ellipse)、圆柱/数据库 (Cylinder)、云 (Cloud)、六边形 (Hexagon)、三角形 (Triangle)、平行四边形 (Parallelogram)、文本气泡 (Text Bubble)、分组框 (Section Panel)。
+    *   **支持形状**: 矩形、圆角矩形、菱形(Decision)、椭圆(Start/End)、圆柱(Database)、云、六边形、三角形、平行四边形、小人(Actor)、标题栏(Title Bar)、文本气泡(Text Bubble)、分组框(Section Panel)。
 *   **多用户并发支持 (Multi-User Concurrency)**: 通过 **全局锁 (Global Lock)** 和 **LRU 缓存 (LRU Cache)** 机制，实现线程安全的 GPU 资源管理。系统能高效处理多用户并发请求，复用图像特征编码，并在保证显存安全的同时显著提升响应速度。
 *   **全栈 Web 界面**: 提供基于 React 的现代化前端和 FastAPI 后端，支持拖拽上传、进度实时显示和在线编辑预览。
 
