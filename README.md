@@ -26,15 +26,20 @@
 ---
 
 ## 📸 效果演示
-### 输入输出对比
-| 原始静态图表（输入） | DrawIO可编辑结果（输出） |
-|----------------------|--------------------------|
-| ![输入图表](static/demo/input_example.jpg) | ![输出结果](static/demo/output_example.png) |
-| 不可编辑的图片格式   | 所有元素可单独调整（形状、文本、箭头、颜色） |
+### 输入输出高清对比（3组典型场景）
+为了更直观展示高保真转换效果，以下提供3组「原始静态图片」与「DrawIO可编辑重建结果」的一一对应对比，所有元素均可单独拖拽、修改样式与文本。
 
-### 复杂场景适配
-![复杂图表转换](static/demo/complex_diagram.jpg)
-<sub>✨ 支持多层级、多形状技术架构图的完整重建，保留原布局与逻辑关系</sub>
+| 场景序号 | 原始静态图表（输入·不可编辑） | DrawIO重建结果（输出·全可编辑） |
+|----------|------------------------------|--------------------------------|
+| 场景1：基础流程图 | <img src="https://raw.githubusercontent.com/XiangjianYi/IMG2XML/main/static/demo/original_1.jpg" width="400" alt="原始图表1" style="border: 1px solid #eee; border-radius: 4px;"/> | <img src="https://raw.githubusercontent.com/XiangjianYi/IMG2XML/main/static/demo/recon_1.png" width="400" alt="重建结果1" style="border: 1px solid #eee; border-radius: 4px;"/> |
+| 场景2：多层级架构图 | <img src="https://raw.githubusercontent.com/XiangjianYi/IMG2XML/main/static/demo/original_2.jpg" width="400" alt="原始图表2" style="border: 1px solid #eee; border-radius: 4px;"/> | <img src="https://raw.githubusercontent.com/XiangjianYi/IMG2XML/main/static/demo/recon_2.png" width="400" alt="重建结果2" style="border: 1px solid #eee; border-radius: 4px;"/> |
+| 场景3：复杂技术示意图 | <img src="https://raw.githubusercontent.com/XiangjianYi/IMG2XML/main/static/demo/original_3.jpg" width="400" alt="原始图表3" style="border: 1px solid #eee; border-radius: 4px;"/> | <img src="https://raw.githubusercontent.com/XiangjianYi/IMG2XML/main/static/demo/recon_3.png" width="400" alt="重建结果3" style="border: 1px solid #eee; border-radius: 4px;"/> |
+
+> ✨ 转换亮点说明：
+> 1.  保留原图表的布局逻辑、颜色搭配与元素层级关系
+> 2.  形状描边/填充、箭头样式（虚线/粗细）1:1还原
+> 3.  文本内容精准识别，支持后续直接编辑与格式调整
+> 4.  所有元素独立可选中，支持DrawIO原生模板替换与布局优化
 
 ---
 
@@ -140,16 +145,9 @@ Image2DrawIO/
 本项目基于 [Apache License 2.0](LICENSE) 开源，允许商用与二次开发（保留版权声明）。
 
 ---
-
 > 🌟 若本项目对你有帮助，欢迎点亮Star支持！
 > 
 > [![GitHub stars](https://img.shields.io/github/stars/XiangjianYi/Image2DrawIO?style=social)](https://github.com/XiangjianYi/Image2DrawIO/stargazers)
 
 ---
 
-### 使用说明
-1.  替换所有 `XiangjianYi`、`你的资源名`、`你的Azure密钥` 等占位符为实际信息。
-2.  图片路径 `static/demo/xxx.jpg` 对应你的效果图路径，可根据实际文件夹调整。
-3.  直接复制全文到 `README.md` 文件，无需额外格式调整，GitHub可直接渲染。
-
-需要我帮你**替换占位符为实际信息**，并优化图片路径适配你的项目结构吗？ 
