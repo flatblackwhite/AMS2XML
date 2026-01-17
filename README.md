@@ -52,9 +52,10 @@ sam3_workflow/
 │   ├── src/                # OCR Source Code (Azure, Mistral, Alignment)
 │   └── main.py             # OCR Entry point
 ├── frontend/               # React Web Application
-├── inputs/                 # Input images directory
-├── models/                 # Model weights (RMBG, etc.)
-├── output/                 # Results directory
+├── input/                  # [Manual] Input images directory
+├── models/                 # [Manual] Model weights (RMBG, SAM3)
+│   └── rmbg/               # [Manual] RMBG-2.0
+├── output/                 # [Manual] Results directory
 ├── sam3/                   # SAM3 Model Library
 ├── scripts/                # Core Processing Scripts
 │   ├── sam3_extractor.py   # Segmentation & Image Extraction Logic
@@ -64,44 +65,69 @@ sam3_workflow/
 └── requirements.txt        # Python dependencies
 ```
 
-## Installation
+## Installation & Setup
 
-### Prerequisites
-*   Python 3.10+
-*   Node.js & npm (for frontend)
-*   CUDA-capable GPU (Recommended for SAM3/RMBG)
+Follow these steps to set up the project locally.
 
-### Setup
+### 1. Prerequisites
+*   **Python 3.10+**
+*   **Node.js & npm** (for the frontend)
+*   **CUDA-capable GPU** (Highly recommended)
 
-1.  **Install Python Dependencies**:
+### 2. Clone Repository
+```bash
+git clone https://github.com/DB-121143/IMG2XML.git
+cd IMG2XML/sam3_workflow
+```
+
+### 3. Initialize Directory Structure
+After cloning, you must **manually create** the following resource directories (ignored by Git):
+
+```bash
+# Create input/output directories
+mkdir -p input
+mkdir -p output
+mkdir -p sam3_output
+
+# Create model directories
+mkdir -p models/rmbg
+```
+
+### 4. Download Model Weights
+Download the required models and place them in the correct paths:
+
+| Model | Download | Target Path |
+| :--- | :--- | :--- |
+| **RMBG-2.0** | [RMBG-2.0](https://modelscope.cn/models/AI-ModelScope/RMBG-2.0/tree/master/onnx) | `models/rmbg/model.onnx` |
+| **SAM 3** | https://modelscope.cn/models/facebook/sam3 | `models/sam3.pt` (or as configured) |
+
+> **Note**: For SAM 3 (or the specific segmentation checkpoint used), place the `.pt` file in `models/` and update `config.yaml`.
+
+### 5. Install Dependencies
+
+**Backend:**
+```bash
+pip install -r requirements.txt
+```
+
+**Frontend:**
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+### 6. Configuration
+
+1.  **Config File**: Copy the example config.
     ```bash
-    pip install -r requirements.txt
+    cp config/config.yaml.example config/config.yaml
     ```
-
-2.  **Model Setup**:
-    Ensure the following models are placed in the `models/` directory:
-    *   `models/rmbg/model.onnx` (RMBG-2.0)
-    *   SAM3 checkpoints (configured in `config/config.yaml`)
-
-### Detailed Model Setup
-
-Since model weights are large, they are not included in the git repository. Please download them manually:
-
-1.  **RMBG-2.0 (Background Removal)**
-    *   Download `model.onnx` from [HuggingFace - BRIA RMBG-2.0](https://huggingface.co/briaai/RMBG-2.0).
-    *   Place it at: `models/rmbg/model.onnx`.
-
-2.  **SAM 3 (Segment Anything Model 3)**
-    *   Download the SAM3 checkpoint (e.g., `sam3.pt`).
-    *   Update the `checkpoint_path` in `config/config.yaml` to point to your downloaded file.
-    *   Ensure `bpe_simple_vocab_16e6.txt.gz` is present in `sam3/assets/`.
-
-3.  **Environment Configuration**:
-    Create `.env` files in `flowchart_text/.env` and root if necessary.
+2.  **Environment Variables**: Create a `.env` file in the root directory.
     ```env
     AZURE_ENDPOINT=your_azure_endpoint
     AZURE_API_KEY=your_azure_key
-    MISTRAL_API_KEY=your_mistral_key
+    # Add other keys as needed
     ```
 
 ## Usage

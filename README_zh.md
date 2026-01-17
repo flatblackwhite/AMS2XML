@@ -50,9 +50,10 @@ sam3_workflow/
 │   ├── src/                # OCR 核心代码 (Azure, Mistral, 文本对齐)
 │   └── main.py             # OCR 入口程序
 ├── frontend/               # React 前端应用
-├── inputs/                 # 输入图片目录
-├── models/                 # 模型权重目录 (RMBG 等)
-├── output/                 # 输出结果目录
+├── input/                  # [需手动创建] 输入图片目录
+├── models/                 # [需手动创建] 模型权重目录
+│   └── rmbg/               # [需手动创建] RMBG模型
+├── output/                 # [需手动创建] 输出结果目录
 ├── sam3/                   # SAM3 模型库
 ├── scripts/                # 核心处理脚本
 │   ├── sam3_extractor.py   # 分割与图像提取逻辑 (SAM3 + RMBG)
@@ -62,45 +63,72 @@ sam3_workflow/
 └── requirements.txt        # Python 依赖列表
 ```
 
-## 安装指南
+## 🛠️ 安装与部署指南 (Installation Guide)
 
-### 前置要求
-*   Python 3.10+
-*   Node.js & npm (若需运行前端)
-*   支持 CUDA 的 GPU (推荐用于加速 SAM3 和 RMBG 推理)
+### 1. 环境准备
+*   **Python 3.10+**
+*   **Node.js & npm** (前端运行需要)
+*   **NVIDIA GPU** (强烈推荐，用于加速 SAM3 和 RMBG 推理)
 
-### 安装步骤
+### 2. 克隆代码仓库
+```bash
+git clone https://github.com/DB-121143/IMG2XML.git
+cd IMG2XML/sam3_workflow
+```
 
-1.  **安装 Python 依赖**:
-    ```bash
-    pip install -r requirements.txt
-    ```
+### 3. 初始化文件夹结构 (Initialize Folders)
+由于 Git 忽略了大文件和临时目录，**拉取代码后必须手动创建以下文件夹**：
 
-2.  **模型准备**:
-    请确保将以下模型文件放置在 `models/` 目录下：
-    *   `models/rmbg/model.onnx` (RMBG-2.0 权重)
-    *   SAM3 的 Checkpoint 文件 (在 `config/config.yaml` 中配置路径)
+```bash
+# 创建输入输出目录
+mkdir -p input
+mkdir -p output
+mkdir -p sam3_output
 
-### 模型下载详细说明 (Model Setup)
+# 创建模型存放目录
+mkdir -p models/rmbg
+```
 
-由于模型权重文件体积较大，未包含在 Git 仓库中，请手动下载并配置：
+### 4. 下载模型权重 (Download Models)
+请下载对应的模型文件并放入指定目录：
 
-1.  **RMBG-2.0 (背景移除模型)**
-    *   从 [HuggingFace - BRIA RMBG-2.0](https://huggingface.co/briaai/RMBG-2.0) 下载 `model.onnx`。
-    *   放置路径: `models/rmbg/model.onnx`。
+| 模型名称 (Model) | 用途 | 下载链接 | 目标路径 (Target Path) |
+| :--- | :--- | :--- | :--- |
+| **RMBG-2.0** | 背景移除 (去底) | [RMBG-2.0](https://modelscope.cn/models/AI-ModelScope/RMBG-2.0/tree/master/onnx) | `models/rmbg/model.onnx` |
+| **SAM 3** | 图像分割 | https://modelscope.cn/models/facebook/sam3 | `models/sam3.pt` (需在配置中指定) |
 
-2.  **SAM 3 (Segment Anything Model 3)**
-    *   下载 SAM3 权重文件 (如 `sam3.pt`)。
-    *   修改 `config/config.yaml` 文件中的 `checkpoint_path` 字段，指向你下载的文件路径。
-    *   确保 `sam3/assets/` 目录下存在 tokenizer 文件 `bpe_simple_vocab_16e6.txt.gz`。
+> ⚠️ **注意**: `models/rmbg` 文件夹下必须包含 `model.onnx` 文件。
 
-3.  **环境配置**:
-    在 `flowchart_text/` 目录下或项目根目录创建 `.env` 文件，填入必要的 API 密钥：
-    ```env
-    AZURE_ENDPOINT=your_azure_endpoint
-    AZURE_API_KEY=your_azure_key
-    MISTRAL_API_KEY=your_mistral_key
-    ```
+### 5. 安装依赖 (Dependencies)
+
+**后端:**
+```bash
+pip install -r requirements.txt
+```
+
+**前端:**
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+### 6. 配置文件 (Configuration)
+
+**1. 复制配置文件**
+```bash
+cp config/config.yaml.example config/config.yaml
+```
+
+**2. 配置环境变量 (.env)**
+在项目根目录创建 `.env` 文件，填入必要的 API 密钥：
+```env
+AZURE_ENDPOINT=https://your-resource.cognitiveservices.azure.com/
+AZURE_API_KEY=your_azure_key
+# 其他常用 Key
+# OPENAI_API_KEY=...
+# DASHSCOPE_API_KEY=...
+```
 
 ## 使用指南
 
