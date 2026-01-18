@@ -1,6 +1,31 @@
-# IMG2XML
+# Image to DrawIO (XML) Converter
+One-click conversion of static diagrams (flowcharts, architecture diagrams, technical schematics) into **editable DrawIO (mxGraph) XML files**. Powered by SAM 3 and multimodal large models, it enables high-fidelity reconstruction that preserves the original diagram details and logical relationships, facilitating rapid secondary editing.
 
-This project implements a sophisticated pipeline to convert images (like flowcharts, diagrams, and technical drawings) into editable DrawIO (mxGraph) XML files. It leverages advanced Computer Vision models and Large Language Models to achieve high-fidelity reconstruction.
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-Apache_2.0-2F80ED?style=flat-square&logo=apache&logoColor=white)](LICENSE)
+[![GitHub Repo](https://img.shields.io/badge/GitHub-Image2DrawIO-24292F?style=flat-square&logo=github&logoColor=white)](https://github.com/XiangjianYi/Image2DrawIO)
+[![CUDA Required](https://img.shields.io/badge/GPU-CUDA%20Recommended-76B900?style=flat-square&logo=nvidia)](https://developer.nvidia.com/cuda-downloads)
+
+---
+
+Visit `https://db121-img2xml.cn/` in your browser, upload an image to complete the conversion, and export the DrawIO XML file with one click.
+
+## 📸 Effect Demonstration
+### High-Definition Input-Output Comparison (3 Typical Scenarios)
+To intuitively demonstrate the high-fidelity conversion effect, the following provides a one-to-one comparison between 3 groups of "original static images" and "DrawIO editable reconstruction results". All elements can be individually dragged, styled, and modified.
+
+| Scenario No. | Original Static Diagram (Input · Non-editable) | DrawIO Reconstruction Result (Output · Fully Editable) |
+|--------------|-----------------------------------------------|--------------------------------------------------------|
+| Scenario 1: Basic Flowchart | <img src="/static/demo/original_1.jpg" width="400" alt="Original Diagram 1" style="border: 1px solid #eee; border-radius: 4px;"/> | <img src="/static/demo/recon_1.png" width="400" alt="Reconstruction Result 1" style="border: 1px solid #eee; border-radius: 4px;"/> |
+| Scenario 2: Multi-level Architecture Diagram | <img src="/static/demo/original_2.png" width="400" alt="Original Diagram 2" style="border: 1px solid #eee; border-radius: 4px;"/> | <img src="/static/demo/recon_2.png" width="400" alt="Reconstruction Result 2" style="border: 1px solid #eee; border-radius: 4px;"/> |
+| Scenario 3: Technical Schematic | <img src="/static/demo/original_3.jpg" width="400" alt="Original Diagram 3" style="border: 1px solid #eee; border-radius: 4px;"/> | <img src="/static/demo/recon_3.png" width="400" alt="Reconstruction Result 3" style="border: 1px solid #eee; border-radius: 4px;"/> |
+| Scenario 4: Scientific Formula Diagram | <img src="/static/demo/original_4.jpg" width="400" alt="Original Diagram 4" style="border: 1px solid #eee; border-radius: 4px;"/> | <img src="/static/demo/recon_4.png" width="400" alt="Reconstruction Result 4" style="border: 1px solid #eee; border-radius: 4px;"/> |
+
+> ✨ Conversion Highlights:
+> 1.  Preserves the layout logic, color matching, and element hierarchy of the original diagram
+> 2.  1:1 restoration of shape stroke/fill and arrow styles (dashed lines/thickness)
+> 3.  Accurate text recognition, supporting direct subsequent editing and format adjustment
+> 4.  All elements are independently selectable, supporting native DrawIO template replacement and layout optimization
 
 ## Key Features
 
@@ -76,8 +101,8 @@ Follow these steps to set up the project locally.
 
 ### 2. Clone Repository
 ```bash
-git clone https://github.com/DB-121143/IMG2XML.git
-cd IMG2XML/sam3_workflow
+git clone https://github.com/XiangjianYi/Image2DrawIO.git
+cd Image2DrawIO
 ```
 
 ### 3. Initialize Directory Structure
@@ -164,4 +189,47 @@ Customize the pipeline behavior in `config/config.yaml`:
 *   **sam3**: Adjust score thresholds, NMS (Non-Maximum Suppression) thresholds, max iteration loops.
 *   **paths**: Set input/output directories.
 *   **dominant_color**: Fine-tune color extraction sensitivity.
+
+## 📌 Development Roadmap
+| Feature Module           | Status       | Description                     |
+|--------------------------|--------------|---------------------------------|
+| Core Conversion Pipeline | ✅ Completed | Full pipeline of segmentation, reconstruction and OCR |
+| Intelligent Arrow Connection | ⚠️ In Development | Automatically associate arrows with target shapes |
+| DrawIO Template Adaptation | 📍 Planned | Support custom template import |
+| Batch Export Optimization | 📍 Planned | Batch export to DrawIO files (.drawio) |
+| Local LLM Adaptation | 📍 Planned | Support local VLM deployment, independent of APIs |
+
+## 🤝 Contribution Guidelines
+Contributions of all kinds are welcome (code submissions, bug reports, feature suggestions):
+1.  Fork this repository
+2.  Create a feature branch (`git checkout -b feature/xxx`)
+3.  Commit your changes (`git commit -m 'feat: add xxx'`)
+4.  Push to the branch (`git push origin feature/xxx`)
+5.  Open a Pull Request
+
+Bug Reports: [Issues](https://github.com/XiangjianYi/Image2DrawIO/issues)
+Feature Suggestions: [Discussions](https://github.com/XiangjianYi/Image2DrawIO/discussions)
+
+## 🤩 Contributors
+Thanks to all developers who have contributed to the project and promoted its iteration!
+
+| Name/ID | Email |
+|---------|-------|
+| Chai Chengliang | ccl@bit.edu.cn |
+| Zhang Chi | zc315@bit.edu.cn |
+| Rao Sijing |  |
+| Yi Xiangjian |  |
+| Li Jianhui |  |
+| Xu Haochen |  |
+| Yang Haotian |  |
+| An Minghao |  |
+| Yu Mingjie |  |
+
+## 📄 License
+This project is open-source under the [Apache License 2.0](LICENSE), allowing commercial use and secondary development (with copyright notice retained).
+
+---
+> 🌟 If this project helps you, please star it to show your support!
+> 
+> [![GitHub stars](https://img.shields.io/github/stars/XiangjianYi/Image2DrawIO?style=social)](https://github.com/XiangjianYi/Image2DrawIO/stargazers)
 
